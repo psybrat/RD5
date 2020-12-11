@@ -11,118 +11,8 @@
 #-------------------------------------------------------------------------------
 import math
 
-def f1(l, b, alf3, dks):
-    by = 1.2 * alf3 * l**2
-    r = 2 * math.sqrt(by)
-    px = b/l * math.sqrt(by * (1.5 - 1/(1 + math.sinh(r)/r)))
-    dkss = dks/b
-    kx = 2 * math.sinh(px * dkss) * math.cosh(0.5 * px)/math.sinh(px)
-    fi = kx * math.cosh(0.5 * px) - math.cosh(px * dkss) + 1
-    return fi
 
-def get_real(message, name="real",default=None):
-    """
-    Запрашивает у пользователя ввод параметра i, оповещая сообщением message
-    Использует по умолчанию значение default. Возвращает Real.
-    """
-    class RangeError(Exception): pass
-    message += ": " if default is None else " [{0}]: ".format(default)
-    while True:
-        try:
-            line = input(message)
-            if not line and default is not None:
-                return default
-            i = float(line)
-            if i >= 0:
-                return i
-            else:
-                raise RangeError("{0} may not be 0".format(name))
-            return i
-        except RangeError as err:
-            print("ERROR", err)
-        except ValueError as err:
-            print("ERROR {0} must be an real".format(name))
-
-
-def number_Gr(t, dt_max, l):
-    """
-    Число Грасгоффа. Температура среды t °C, максимально допустимая
-    разница температур (среда-элемент) dt_max, определяющий размер l
-
-    """
-    # Дописать расчёт числа 303959E5
-    gr = 303959E5 * dt_max * l ** 3/(273 + t)
-    return gr
-
-
-def number_Nu_plane(t_air, dt_max, l):
-    """
-    Число Нуссельта для плоской вертикальной стенки, l - высота стенки
-    dt_max - максимально допустимая разница температур (среда-элемент),
-    t_air - температура среды
-    """
-    # a = Gr*Pr, Pr = 0.7
-    a = 0.7 * number_Gr(t_air, dt_max, l)
-
-    if a <= 5E2:
-        nu = 1.18 * a ** 0.125
-    else:
-        nu = 0.135 * a ** 0.33
-    return nu
-
-
-def number_Nu_edge(t_air, dt_max, dell, l):
-    """
-    Число Нуссельта для межрёберного пространства. tb - температура воздуха,
-    dt_max - максимально допустимая разница температур (среда-элемент),
-    t_air - температура среды
-    """
-    # Грасгофф. определяющий размер - половина расстояния между рёбер. Т = 50
-    c = number_Gr(t_air, dt_max, dell) * dell/l
-    q = 12.84 + c
-    # число нуссельта
-    nu = 6 * c/q * 1/(1 + math.sqrt(1 + (51.4 * c)/q ** 2))
-    return nu
-
-
-def number_Alfa(nu, l, t = 50):
-    """
-    nu - число Нуссельта, l - определяющий размер
-    Коэффициент теплоотдачи для воздуха. Теплопроводность взята при Т=50
-    """
-    # Дописать расчёт теплопроводности воздуха
-    alfa = 0.0283 * nu/l
-    return alfa
-
-
-def edge_par(b, l, h1, s, h0, br, fr1):
-    """
-    Возвращает параметры радиатора на основании исходных данных
-    b, l - ширина радиатора и длина ребра, br - толщина ребра, s - шаг ребра
-    h1 - высота ребра, h0 - толщина основания,
-    fr1 - боковая поверхность рёбер, изымаемая при выборке
-    на выходе
-    dell - половина расстояния между рёбер, fr - боковая поверхность рёбер,
-    f0 - поверхность радиатора без боковых рёберных поверхностей, fp - полная поверхность основания
-    """
-    # количество рёбер
-    nz = round((b - br)/s + 1)
-    # полная площадь поверхности основания
-    fp = l * b
-    # половина расстояния между рёбрами
-    dell = (s - br)/2
-    # Боковая поверхность рёбер, исключая часть из выборки
-    fr = 2 * (nz - 1) * h1 * l - fr1
-
-    if fr <= 0:                         # Допускается установка ППП на поверхность, меньше контактной
-        fr = 0
-
-    # Поверхность радиатора без боковых поверхностей рёбер
-    f0 = 2*(h1 + h0)*l + 2*nz*h1*br  + br*nz*l + 2*b*h0 + (nz-1)*l*2*dell
-    return dell, fr, f0, fp
-
-
-class edge_radiator():
+class EdgeRadiator():
     """
     Ребристый радиатор.
     param ::
@@ -140,7 +30,7 @@ class edge_radiator():
             Шаг рёбер [м]
 
 
-    >>> rad = edge_radiator(30E-3, 35E-3, 10E-3)
+    >>> rad = EdgeRadiator(30E-3, 35E-3, 10E-3)
     >>> rad.edge_number()
     3.0
     >>> round(rad.flat_surface(), 7)
@@ -226,15 +116,220 @@ class edge_radiator():
         f0
         Полная площадь поверхности радиатора без боковых поверхностей рёбер. [м^2]
         """
-        ##f0 = 2*(h1 + h0)*l + 2*nz*h1*br  + br*nz*l + 2*b*h0 + (nz-1)*l*2*dell
-
-##        res = (self.length * self.width) + \
-##            self.edge_number() * (self.fin_thick * self.fin_height * 2) + \
-##            2 * self.base_thick * (self.length + self.width) + \
-##            2 * self.length * self.fin_height
-
-        res = 2*(self.fin_height + self.base_thick)*self.length + 2*self.edge_number()*self.fin_height*self.fin_thick  + self.fin_thick*self.edge_number()*self.length + 2*self.width*self.base_thick + (self.edge_number()-1)*self.length*2*self.half_step()
+        res = self.length * self.width + 2 * self.fin_height * self.length +  \
+            2 * self.base_thick * (self.length + self.width) + \
+            2 * self.edge_number() * self.fin_height * self.fin_thick
         return res
+
+
+class ElectronicElement():
+    """
+    Электрический элемент.
+    param::
+        power : float
+            Тепловая мощность элемента [Вт]
+        max_t : float
+            Максимально допустимая температура элемента [*C]
+        contact_space : float
+            Площадь поверхности контакта с радиатором охлаждения [м^2]
+        temp_resist : float
+            Контактное тепловое сопротивление Элемент-Радиатор (Обычно это КПТ-8) [м^2*К/Вт]
+        viborka : int
+            Признак выборки под элемент (1..6)
+
+    >>> params = [5, 70, 0.013, 7.6e-05, 6]
+    >>> el = ElectronicElement(*params)
+    >>> round(el.permissible_overheating(40), 2) == 29.97
+    True
+    >>> round(el.fr1_exclude_surface(0.01), 7) == 0.0028
+    True
+    """
+
+    SV = [1E-2, 3E-2, 5E-2, 7.2E-2, 1.05E-1, 1.4E-1]
+
+    def __init__(self, power, max_t, contact_space, temp_resist, viborka):
+        self.power = power
+        self.max_t = max_t
+        self.contact_space = contact_space
+        self.temp_resist = temp_resist
+        self.viborka = viborka
+
+
+    def __repr__(self):
+        return \
+        """
+        <ElectronicElement>
+        power: {}
+        max_t: {}
+        contact_space: {}
+        temp_resist: {}
+        viborka: {}
+        """.format(self.power, self.max_t, self.contact_space, self.temp_resist, self.viborka)
+
+
+    def permissible_overheating(self, air_temp):
+        """
+        param ::
+            air_temp : float
+                Температура окружающей среды (среды охлаждения)
+
+        Возвращает допустимый перегрев элемента относительно окружающей среды [*C]
+        dTдоп = Tmax - t.air * P * sigmaT / S.контакта
+        """
+        return self.max_t - air_temp - self.power * self.temp_resist / self.contact_space
+
+
+    def fr1_exclude_surface(self, fin_height):
+        """
+        param ::
+            fin_height : float
+                Высота ребра используемого радиатора [м]
+
+        Возвращает площадь боковой поверхности рёбер радиатора, изымаемая при установке
+        элемента на ребристую сторону радиатора. Рассчитывается исходя из
+        признака выборки по РД5.8794-88 (или ОСТ) [м^2]
+        """
+        return 2 * self.SV[self.viborka - 1] * fin_height
+
+
+class SetElectronicElements():
+    """
+    Набор элементов на одном радиаторе.
+
+    params ::
+        elements : list of <ElectronicElement>
+
+    >>> params = [5, 70, 0.013, 7.6e-05, 6]
+    >>> el1 = ElectronicElement(*params)
+    >>> params = [7, 50, 0.01, 7.6e-05, 1]
+    >>> el2 = ElectronicElement(*params)
+    >>> pull = SetElectronicElements(el1, el2)
+    >>> print(pull)
+    <SetElectronicElements:len=2; powers:[5, 7]>
+    >>> params = [10, 65, 0.05, 7.6e-05, 5]
+    >>> el3 = ElectronicElement(*params)
+    >>> pull.add(el3)
+    >>> print(pull)
+    <SetElectronicElements:len=3; powers:[5, 7, 10]>
+    >>> print(pull.dtr_permissible_overheating(40))
+    9.9468
+    """
+    def __init__(self, *elements):
+        self.pull = []
+        self.pull.extend(elements)
+
+
+    def __repr__(self):
+        return "<SetElectronicElements:len={}; powers:{}>".format(len(self.pull), \
+                                                            [el.power for el in self.pull])
+
+
+    def add(self, element):
+        """
+        Добавляет элемент <ElectronicElement> в набор элементов.
+
+        params ::
+            element : <ElectronicElement>
+                Объект класса <ElectronicElement>
+        """
+        self.pull.append(element)
+
+
+    def dtr_permissible_overheating(self, air_temp):
+        """
+        Возвращает минимальное значение допустимого перегрева для набора элементов
+        на радиаторе.
+
+        params ::
+            air_temp : float
+                Температура охлаждающей среды
+        """
+        return min([el.permissible_overheating(air_temp) for el in self.pull])
+
+
+def f1(l, b, alf3, dks):
+    by = 1.2 * alf3 * l**2
+    r = 2 * math.sqrt(by)
+    px = b/l * math.sqrt(by * (1.5 - 1/(1 + math.sinh(r)/r)))
+    dkss = dks/b
+    kx = 2 * math.sinh(px * dkss) * math.cosh(0.5 * px)/math.sinh(px)
+    fi = kx * math.cosh(0.5 * px) - math.cosh(px * dkss) + 1
+    return fi
+
+def get_real(message, name="real",default=None):
+    """
+    Запрашивает у пользователя ввод параметра i, оповещая сообщением message
+    Использует по умолчанию значение default. Возвращает Real.
+    """
+    class RangeError(Exception): pass
+    message += ": " if default is None else " [{0}]: ".format(default)
+    while True:
+        try:
+            line = input(message)
+            if not line and default is not None:
+                return default
+            i = float(line)
+            if i >= 0:
+                return i
+            else:
+                raise RangeError("{0} may not be 0".format(name))
+            return i
+        except RangeError as err:
+            print("ERROR", err)
+        except ValueError as err:
+            print("ERROR {0} must be an real".format(name))
+
+
+def number_Gr(t, dt_max, l):
+    """
+    Число Грасгоффа. Температура среды t °C, максимально допустимая
+    разница температур (среда-элемент) dt_max, определяющий размер l
+
+    """
+    # Дописать расчёт числа 303959E5
+    gr = 303959E5 * dt_max * l ** 3/(273 + t)
+    return gr
+
+
+def number_Nu_plane(t_air, dt_max, l):
+    """
+    Число Нуссельта для плоской вертикальной стенки, l - высота стенки
+    dt_max - максимально допустимая разница температур (среда-элемент),
+    t_air - температура среды
+    """
+    # a = Gr*Pr, Pr = 0.7
+    a = 0.7 * number_Gr(t_air, dt_max, l)
+
+    if a <= 5E2:
+        nu = 1.18 * a ** 0.125
+    else:
+        nu = 0.135 * a ** 0.33
+    return nu
+
+
+def number_Nu_edge(t_air, dt_max, dell, l):
+    """
+    Число Нуссельта для межрёберного пространства. tb - температура воздуха,
+    dt_max - максимально допустимая разница температур (среда-элемент),
+    t_air - температура среды
+    """
+    # Грасгофф. определяющий размер - половина расстояния между рёбер. Т = 50
+    c = number_Gr(t_air, dt_max, dell) * dell/l
+    q = 12.84 + c
+    # число нуссельта
+    nu = 6 * c/q * 1/(1 + math.sqrt(1 + (51.4 * c)/q ** 2))
+    return nu
+
+
+def number_Alfa(nu, l, t = 50):
+    """
+    nu - число Нуссельта, l - определяющий размер
+    Коэффициент теплоотдачи для воздуха. Теплопроводность взята при Т=50
+    """
+    # Дописать расчёт теплопроводности воздуха
+    alfa = 0.0283 * nu/l
+    return alfa
+
 
 def number_Alfa_radiation(t_air, dt_max, dell, h1):
     """
@@ -254,6 +349,7 @@ def number_Alfa_radiation(t_air, dt_max, dell, h1):
     # Получаем альфу лучистую
     alflr = alfl * fi1
     return alfl, alflr
+
 
 def full_p():
     # количество рёбер
@@ -278,7 +374,7 @@ def main():
     SV = [1E-2, 3E-2, 5E-2, 7.2E-2, 1.05E-1, 1.4E-1]   # это должны быть длины изымаемых рёбер
 
     tb = get_real("Введите температуру воздуха, °C", default = 40)
-    h1 = get_real("введите высоту ребра, м", default = 0.04)
+    h1 = get_real("введите высоту ребра, м", default = 0.01)
     lm = get_real("максимально допустимая высота радиатора, м", default = 1.125)
     bm = get_real("максимально допустимая ширина радиатора, м", default = 1.152)
     k = get_real("Односторонний или двусторонний радиатор (1/2) ", default = 1)
@@ -288,18 +384,28 @@ def main():
     pi = list()
     k2 = list(); kkr = list(); tdop = list(); s0 = list()
 
+    gather_elements = SetElectronicElements()
     for i in range(n):
+        temp2 = []
         temp = get_real("Мощность элемента {0}, Вт".format(i), default = 5)
         pi.append(temp)
+        temp2.append(temp)
         temp = get_real("Максимально допустимая температура элемента {0}, °С".format(i), default = 70)
         tdop.append(temp)
+        temp2.append(temp)
         temp = get_real("Площадь контакта элемента {0}, м2".format(i), default = 0.013)
         s0.append(temp)
+        temp2.append(temp)
         temp = get_real("Удельное контактное тепловое сопротивление элемента {0} м2*К/Вт".format(i), default = 0.76E-4)
         kkr.append(temp)
+        temp2.append(temp)
         temp = get_real("Признак выборки под ППП {0} (1..6)".format(i), default = 6)
         k2.append(temp)
-        # Радиатор 0,1  0,152 0,0125
+        temp2.append(temp)
+        element = ElectronicElement(*temp2)
+        gather_elements.add(element)
+
+
     s = 0.01
     br = 0.001
     h0 = 0.005
@@ -315,6 +421,7 @@ def main():
         tdop[i] -= tb - pi[i] * kkr[i] / s0[i]  # расчёт допустимого перегрева (минимального)
         if tdop[i] <= dtr:                      #  --//--
             dtr = tdop[i]                       #  --//--
+        assert dtr == gather_elements.dtr_permissible_overheating(tb), '{} != {}'.format(dtr, gather_elements.dtr_permissible_overheating(tb))
 
     for i in range(len(L1)):
         print('New from len L1')
@@ -332,14 +439,12 @@ def main():
             break
 # ------------------------------------------------------------------
 
-        radiator = edge_radiator(b, l, h1, s, h0, br)
+        radiator = EdgeRadiator(b, l, h1, s, h0, br)
 
         dell = radiator.half_step()
         fr = radiator.fins_surface_with_element(fr1)
         f0 = radiator.full_surface()
         fp = radiator.flat_surface()
-
-
 
 
         nu_edge = number_Nu_edge(tb,dtr, dell, l)
