@@ -1,0 +1,5 @@
+#;t_air;h1;l_max;b_max;k;n_el
+0;40;0.01;1.125;1.152;1;2
+#;power;t_max;s_contact;temp_resist;viborka;
+1;5;70;0.013;0.000076;6;
+2;10;70;0.013;0.000076;6;

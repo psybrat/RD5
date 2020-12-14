@@ -406,6 +406,8 @@ def main():
         gather_elements.add(element)
 
 
+#TODO ВВести gather_elements!!!
+
     s = 0.01
     br = 0.001
     h0 = 0.005
@@ -418,10 +420,10 @@ def main():
         kk = k2[i]              # здесь хранится номер выборки i-того элемента
         p += pi[i]            # здесь собираем суммарную мощность ППП
         fr1 += 2 * SV[kk-1] * h1 * k1     # боковая поверхность рёбер, изымаемая при выборке
-        tdop[i] -= tb - pi[i] * kkr[i] / s0[i]  # расчёт допустимого перегрева (минимального)
+        tdop[i] -= tb + pi[i] * kkr[i] / s0[i]  # расчёт допустимого перегрева (минимального)
         if tdop[i] <= dtr:                      #  --//--
             dtr = tdop[i]                       #  --//--
-        assert dtr == gather_elements.dtr_permissible_overheating(tb), '{} != {}'.format(dtr, gather_elements.dtr_permissible_overheating(tb))
+#    dtr = gather_elements.dtr_permissible_overheating(tb)
 
     for i in range(len(L1)):
         print('New from len L1')
