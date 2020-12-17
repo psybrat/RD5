@@ -29,7 +29,7 @@ def line_clear(line):
     >>> print(line_clear(['1', '5', '70', '0.013', '0.000076', '6', '']))
     [5.0, 70.0, 0.013, 7.6e-05, 6.0]
     """
-#    print(line)
+
     if line[0] == '0':
         return [el for el in map(float, line[1:])]
     else:
@@ -37,6 +37,21 @@ def line_clear(line):
 
 
 def csv_parser(csv_path):
+    """
+    param:
+        csv_path: string
+            Путь к .csv файлу
+
+    Парсим .csv файл с параметрами расчёта и возвращаем dict с ключом conditions
+    для параметров условия и elements со списком элементов.
+
+    >>> path = 'test_csv_parser.csv'
+    >>> res = csv_parser(path)
+    >>> res == {'conditions': [40.0, 0.01, 1.125, 1.152, 1.0, 2.0], 'elements': [[5.0, 70.0, 0.013, 7.6e-05, 6.0], [10.0, 70.0, 0.013, 7.6e-05, 6.0], [15.0, 50.0, 0.015, 1e-05, 0.0]]}
+    True
+    """
+    #TODO Обработка запятых
+    #TODO перевести list в dict
     res = {'conditions': [], 'elements': []}
     with open(csv_path, "r") as f_obj:
         reader = csv.reader(f_obj, delimiter=';')
@@ -45,6 +60,7 @@ def csv_parser(csv_path):
                 res['conditions'] = line_clear(line)
             if line[0].isdigit() and int(line[0]) > 0:
                 res['elements'].append(line_clear(line))
+##    print(res)
     return(res)
 
 

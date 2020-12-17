@@ -10,6 +10,7 @@
 # Licence:     <your licence>
 #-------------------------------------------------------------------------------
 import math
+import utils
 
 
 class EdgeRadiator():
@@ -247,6 +248,21 @@ class SetElectronicElements():
         return min([el.permissible_overheating(air_temp) for el in self.pull])
 
 
+    def full_power(self):
+        """
+        Возвращает суммарную тепловую мощность добавленных элементов
+        """
+        return sum([el.power for el in self.pull])
+
+
+    def fr1_full_exclude_surface(self, fin_height):
+        """
+        Возвращает суммарную площадь боковых поверхностей, изъятых при установке
+        элементов на ребристую сторону радиатора.
+        """
+        return sum([el.fr1_exclude_surface(fin_height) for el in self.pull])
+
+
 def f1(l, b, alf3, dks):
     by = 1.2 * alf3 * l**2
     r = 2 * math.sqrt(by)
@@ -405,25 +421,34 @@ def main():
         element = ElectronicElement(*temp2)
         gather_elements.add(element)
 
+##    filename = 'input_data.csv'
+##    data = utils.csv_parser(filename)
+##    tb, h1, lm, bm, k, n = data['conditions']
+##    for el in data['elements']:
+##        element = ElectronicElement(*el)
+##        gather_elements.add(element)
 
-#TODO ВВести gather_elements!!!
 
-    s = 0.01
-    br = 0.001
-    h0 = 0.005
+##    s = 0.01
+##    br = 0.001
+##    h0 = 0.005
     dks = math.sqrt(s0[0]/3.14)  #почему? Иди нахуй. вот почему.
-    p = 0
-    dtr = 1000    # допустимый перегрев
-    fr1 = 0
+##    p = 0
+##    dtr = 1000    # допустимый перегрев
+##    fr1 = 0
 
-    for i in range(n):
-        kk = k2[i]              # здесь хранится номер выборки i-того элемента
-        p += pi[i]            # здесь собираем суммарную мощность ППП
-        fr1 += 2 * SV[kk-1] * h1 * k1     # боковая поверхность рёбер, изымаемая при выборке
-        tdop[i] -= tb + pi[i] * kkr[i] / s0[i]  # расчёт допустимого перегрева (минимального)
-        if tdop[i] <= dtr:                      #  --//--
-            dtr = tdop[i]                       #  --//--
-#    dtr = gather_elements.dtr_permissible_overheating(tb)
+##    for i in range(n):
+##        kk = k2[i]              # здесь хранится номер выборки i-того элемента
+##        p += pi[i]            # здесь собираем суммарную мощность ППП
+##        fr1 += 2 * SV[kk-1] * h1 * k1     # боковая поверхность рёбер, изымаемая при выборке
+##        tdop[i] -= tb + pi[i] * kkr[i] / s0[i]  # расчёт допустимого перегрева (минимального)
+##        if tdop[i] <= dtr:                      #  --//--
+##            dtr = tdop[i]                       #  --//--
+##    print(dtr)
+##    print(gather_elements.dtr_permissible_overheating(tb))
+    fr1 = gather_elements.fr1_full_exclude_surface(h1)
+    dtr = gather_elements.dtr_permissible_overheating(tb)
+    p = gather_elements.full_power()
 
     for i in range(len(L1)):
         print('New from len L1')
@@ -441,7 +466,7 @@ def main():
             break
 # ------------------------------------------------------------------
 
-        radiator = EdgeRadiator(b, l, h1, s, h0, br)
+        radiator = EdgeRadiator(b, l, h1)
 
         dell = radiator.half_step()
         fr = radiator.fins_surface_with_element(fr1)
