@@ -146,14 +146,14 @@ class ElectronicElement():
     True
     """
 
-    SV = [1E-2, 3E-2, 5E-2, 7.2E-2, 1.05E-1, 1.4E-1]
+    SV = [0, 1E-2, 3E-2, 5E-2, 7.2E-2, 1.05E-1, 1.4E-1]
 
     def __init__(self, power, max_t, contact_space, temp_resist, viborka):
         self.power = power
         self.max_t = max_t
         self.contact_space = contact_space
         self.temp_resist = temp_resist
-        self.viborka = viborka
+        self.viborka = int(viborka)
 
 
     def __repr__(self):
@@ -190,7 +190,7 @@ class ElectronicElement():
         элемента на ребристую сторону радиатора. Рассчитывается исходя из
         признака выборки по РД5.8794-88 (или ОСТ) [м^2]
         """
-        return 2 * self.SV[self.viborka - 1] * fin_height
+        return 2 * self.SV[self.viborka] * fin_height
 
 
 class SetElectronicElements():
@@ -263,14 +263,34 @@ class SetElectronicElements():
         return sum([el.fr1_exclude_surface(fin_height) for el in self.pull])
 
 
-def f1(l, b, alf3, dks):
-    by = 1.2 * alf3 * l**2
-    r = 2 * math.sqrt(by)
-    px = b/l * math.sqrt(by * (1.5 - 1/(1 + math.sinh(r)/r)))
-    dkss = dks/b
-    kx = 2 * math.sinh(px * dkss) * math.cosh(0.5 * px)/math.sinh(px)
-    fi = kx * math.cosh(0.5 * px) - math.cosh(px * dkss) + 1
-    return fi
+def f1xy(L, B, n, alff, dks):
+    """
+    param:
+        L : float
+            Длина ребра радиатора [м]
+        B : float
+            Ширина радиатора [м]
+        alff : float
+            Эффективный коэффициент теплоотдачи для 1 м2 основания радиатора [Вт/м2*К]
+        dks : float
+            Ещё один неизвестный коэффициент.
+
+    Понятия не имею, что делает эта функция. Вроде как, считает растекание
+    теплоты по радиатору в направлениях l и b.
+    """
+    def f1(L, B, alf3, dks):
+        by = 1.2 * alf3 * L**2
+        r = 2 * math.sqrt(by)
+        px = B/L * math.sqrt(by * (1.5 - 1/(1 + math.sinh(r)/r)))
+        dkss = dks/B
+        kx = 2 * math.sinh(px * dkss) * math.cosh(0.5 * px)/math.sinh(px)
+        fi = kx * math.cosh(0.5 * px) - math.cosh(px * dkss) + 1
+        return fi
+
+    f1x = f1(L/n, B, alff, dks)
+    f1y = f1(B, L/n, alff, dks)
+    return f1x*f1y
+
 
 def get_real(message, name="real",default=None):
     """
@@ -367,17 +387,85 @@ def number_Alfa_radiation(t_air, dt_max, dell, h1):
     return alfl, alflr
 
 
-def full_p():
-    # количество рёбер
-    nz = (b - br)/s + 1
-    # полная площадь поверхности основания
-    fp = l * b
-    # половина расстояния между рёбрами
-    dell = (s - br)/2
+def alpha2power(alpha, surface, diff_t):
+    """
+    param:
+        alpha : float
+            коэффициент теплоотдачи [Вт/м*К]
+        surface : float
+            площадь контактной поверхности [м^2]
+        diff_t : float
+            Разность температур поверхности и окружающей среды [*C]
+
+    Возвращает мощность P [Вт], излучаемую с площади surface при разности температур diff_t
+    и коэффициенте теплоотдачи alpha.
+        P = alpha * surface * diff_t
+    """
+    return alpha*surface*diff_t
+
+
+def cooling_power(radiator, tb, dtr, n, fr1, k, dks):
+    """
+    param:
+        radiator : EdgeRadiator()
+            Экземпляр класса радиатора.
+        tb : float
+            Температура окружающей среды [*C]
+        dtr : float
+            Максимально допустимая разница температур [*C]
+        n : integer
+            Количество установленных элементов
+        fr1 : float
+            Площадь изымаемых боковых поверхностей [м^2]
+        k : integer
+            Одно- или двусторонний радиатор
+        dks : float
+            Магическая переменная
+
+    Расчёт мощности [Вт] отводимой радиатором в данных условиях
+    """
+    l = radiator.length
+    b = radiator.width
+    h1 = radiator.fin_height
+
+
+    dell = radiator.half_step()
+
+    fr = radiator.fins_surface_with_element(fr1)
+    f0 = radiator.full_surface()
+    fp = radiator.flat_surface()
+
+
+    nu_edge = number_Nu_edge(tb,dtr, dell, l)
+    nu_plane = number_Nu_plane(tb, dtr, l)
+
+    pr = alpha2power(number_Alfa(nu_edge, dell), fr, dtr)    # Мощность, отводимая боковй поверхностью рёбер
+    p0 = alpha2power(number_Alfa(nu_plane, l), f0, dtr)     # Мощность, отводимая остальной поверхностью
+
+# ----- Начинается расчёт лучевого теплообмена --------------------
+    alfl, alflr = number_Alfa_radiation(tb, dtr, dell, h1)
+
+
+    pl0 = alpha2power(alfl, f0, dtr)        # Излучение с поверхностей радиатора, но не между рёбер
+    plr = alpha2power(alflr, fr, dtr)       # Излучение с поверхностей рёбер
+
+    p2 = pr + p0 + pl0 + plr                    # Суммарная теплоотдача, конвекция рёбра + лучи рёбра + конвекция остальное + лучистое остальное
+
     if k == 1:
-# -------- теплоотдача от неоребрённой поверхности радиатора -----------
-        pp = p_plane(tb, dtr, l, b)
-# -------закончен расчёт теплоотдачи от неоребрённой поверхности -------
+        pp = alpha2power(number_Alfa(nu_plane, l), fp, dtr)   # Мощность (конвективная), отводимая от неоребрённой поверхности
+        plp = alpha2power(alfl, fp, dtr)                        # Мощность (лучистая), отводимая с плоской стороны радиатора
+        p1 = pp + plp
+    else:
+        p1 = p2                                 # Здесь считаем, что на второй стороне такие же рёбра, как и на первой.
+
+    alff = (p1 + p2)/(l*b*dtr)                  # Это подсчёт альфы эффективной. Полная мощность с основания.
+
+    bet = fp/(4*n*dks**2) * f1xy(l, b, n, alff, dks)       # Вытекающий коэффициент растекания тепла
+    pp = alpha2power(alff, fp, dtr)/bet
+
+    print("pp = {0}; fr = {1}".format(pp, fr))
+    return pp
+
 
 def main():
     L1 = [3.6E-2, 3.6E-2, 5E-2, 5E-2, 5E-2, 8E-2, 8E-2, 8E-2, 1E-1, 1E-1,  1E-1,
@@ -387,68 +475,25 @@ def main():
     L2 = [5E-2, 5E-2, 8E-2, 8E-2, 1E-1, 1E-1, 1E-1, 1.25E-1, 1.25E-1,  1.25E-1]
     B2 = [5.2E-2, 9.2E-2, 7.2E-2, 1.22E-1, 5.2E-2, 9.2E-2, 1.52E-1, 7.2E-2,
             1.22E-1, 1.52E-1]
-    SV = [1E-2, 3E-2, 5E-2, 7.2E-2, 1.05E-1, 1.4E-1]   # это должны быть длины изымаемых рёбер
-
-    tb = get_real("Введите температуру воздуха, °C", default = 40)
-    h1 = get_real("введите высоту ребра, м", default = 0.01)
-    lm = get_real("максимально допустимая высота радиатора, м", default = 1.125)
-    bm = get_real("максимально допустимая ширина радиатора, м", default = 1.152)
-    k = get_real("Односторонний или двусторонний радиатор (1/2) ", default = 1)
-    n = int(get_real("Количество ППП, установленных на радиаторе", default = 1))
-    k1 = get_real("Имеется ли выборка (0/1)", default = 1)
-
-    pi = list()
-    k2 = list(); kkr = list(); tdop = list(); s0 = list()
 
     gather_elements = SetElectronicElements()
-    for i in range(n):
-        temp2 = []
-        temp = get_real("Мощность элемента {0}, Вт".format(i), default = 5)
-        pi.append(temp)
-        temp2.append(temp)
-        temp = get_real("Максимально допустимая температура элемента {0}, °С".format(i), default = 70)
-        tdop.append(temp)
-        temp2.append(temp)
-        temp = get_real("Площадь контакта элемента {0}, м2".format(i), default = 0.013)
-        s0.append(temp)
-        temp2.append(temp)
-        temp = get_real("Удельное контактное тепловое сопротивление элемента {0} м2*К/Вт".format(i), default = 0.76E-4)
-        kkr.append(temp)
-        temp2.append(temp)
-        temp = get_real("Признак выборки под ППП {0} (1..6)".format(i), default = 6)
-        k2.append(temp)
-        temp2.append(temp)
-        element = ElectronicElement(*temp2)
+
+    filename = 'input_data.csv'
+    data = utils.csv_parser(filename)
+    tb, h1, lm, bm, k, n = data['conditions']
+    for el in data['elements']:
+        element = ElectronicElement(*el)
         gather_elements.add(element)
 
-##    filename = 'input_data.csv'
-##    data = utils.csv_parser(filename)
-##    tb, h1, lm, bm, k, n = data['conditions']
-##    for el in data['elements']:
-##        element = ElectronicElement(*el)
-##        gather_elements.add(element)
 
+    s0 = 0.2e-3 #изначально бралась площадь контакта первого элемента (хз почему)
+    dks = math.sqrt(s0/3.14)  #почему? Иди нахуй. вот почему.
 
-##    s = 0.01
-##    br = 0.001
-##    h0 = 0.005
-    dks = math.sqrt(s0[0]/3.14)  #почему? Иди нахуй. вот почему.
-##    p = 0
-##    dtr = 1000    # допустимый перегрев
-##    fr1 = 0
-
-##    for i in range(n):
-##        kk = k2[i]              # здесь хранится номер выборки i-того элемента
-##        p += pi[i]            # здесь собираем суммарную мощность ППП
-##        fr1 += 2 * SV[kk-1] * h1 * k1     # боковая поверхность рёбер, изымаемая при выборке
-##        tdop[i] -= tb + pi[i] * kkr[i] / s0[i]  # расчёт допустимого перегрева (минимального)
-##        if tdop[i] <= dtr:                      #  --//--
-##            dtr = tdop[i]                       #  --//--
-##    print(dtr)
-##    print(gather_elements.dtr_permissible_overheating(tb))
     fr1 = gather_elements.fr1_full_exclude_surface(h1)
     dtr = gather_elements.dtr_permissible_overheating(tb)
     p = gather_elements.full_power()
+
+    conditions = {'tb': tb, 'dtr': dtr, 'n': n, 'fr1': fr1, 'k': k, 'dks': dks}
 
     for i in range(len(L1)):
         print('New from len L1')
@@ -467,40 +512,8 @@ def main():
 # ------------------------------------------------------------------
 
         radiator = EdgeRadiator(b, l, h1)
+        pp = cooling_power(radiator, **conditions)
 
-        dell = radiator.half_step()
-        fr = radiator.fins_surface_with_element(fr1)
-        f0 = radiator.full_surface()
-        fp = radiator.flat_surface()
-
-
-        nu_edge = number_Nu_edge(tb,dtr, dell, l)
-        nu_plane = number_Nu_plane(tb, dtr, l)
-
-        pr = number_Alfa(nu_edge, dell) * fr * dtr    # Мощность, отводимая боковй поверхностью рёбер
-        p0 = number_Alfa(nu_plane, l) * f0 * dtr   # Мощность, отводимая остальной поверхностью
-
-# ----- Начинается расчёт лучевого теплообмена --------------------
-        alfl, alflr = number_Alfa_radiation(tb, dtr, dell, h1)
-
-        pl0 = alfl*f0*dtr                           # Излучение с поверхностей радиатора, но не между рёбер
-        plr = alflr*fr*dtr                          # Излучение с поверхностей рёбер
-
-        p2 = pr + p0 + pl0 + plr                    # Суммарная теплоотдача, конвекция рёбра + лучи рёбра + конвекция остальное + лучистое остальное
-
-        if k == 1:
-            pp = number_Alfa(nu_plane, l) * fp * dtr   # Мощность (конвективная), отводимая от неоребрённой поверхности
-            plp = alfl * fp * dtr                   # Мощность (лучистая), отводимая с плоской стороны радиатора
-            p1 = pp + plp
-        else:
-            p1 = p2                                 # Здесь считаем, что на второй стороне такие же рёбра, как и на первой.
-
-        alff = (p1 + p2)/(l*b*dtr)                  # Это подсчёт альфы эффективной. Полная мощность с основания.
-        f1x = f1(l/n, b, alff, dks)                 # Это за гранью моего понимания. Возможно, растекание тепла по основанию.
-        f1y = f1(b, l/n, alff, dks)
-        bet = fp/(4*n*dks**2) * f1x * f1y           # Вытекающий коэффициент растекания тепла
-        pp = fp * alff * dtr/bet
-        print("pp = {0}; fr = {1}".format(pp, fr))
         if pp >= p:
             print("Параметры радиатора: длина {0}, ширина {1}, выота ребра {2}, площадь {3}".format(l,b,h1, l*b))
             break
