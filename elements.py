@@ -3,11 +3,9 @@
 # Name:        elements
 # Purpose:
 #
-# Author:      g.ukryukov
+# Author:      psybrat
 #
 # Created:     21.12.2020
-# Copyright:   (c) g.ukryukov 2020
-# Licence:     <your licence>
 #-------------------------------------------------------------------------------
 
 

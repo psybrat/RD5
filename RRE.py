@@ -1,13 +1,11 @@
 # -*- coding: utf-8 -*-
 #-------------------------------------------------------------------------------
-# Name:        модуль1
+# Name:        RRE
 # Purpose:
 #
-# Author:      g.ukryukov
+# Author:      psybrat
 #
-# Created:     27.06.2018
-# Copyright:   (c) g.ukryukov 2018
-# Licence:     <your licence>
+# Created:     27.06.2020
 #-------------------------------------------------------------------------------
 import math
 import utils

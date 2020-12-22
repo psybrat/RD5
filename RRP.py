@@ -3,11 +3,10 @@
 # Name:        RRP
 # Purpose:
 #
-# Author:      g.ukryukov
+# Author:      psybrat
 #
-# Created:     10.07.2018
-# Copyright:   (c) g.ukryukov 2018
-# Licence:     <your licence>
+# Created:     10.07.2020
+
 #-------------------------------------------------------------------------------
 import math
 import utils

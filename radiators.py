@@ -1,17 +1,15 @@
 # -*- coding: utf-8 -*-
 #-------------------------------------------------------------------------------
-# Name:        модуль1
+# Name:        radiators
 # Purpose:
 #
-# Author:      g.ukryukov
+# Author:      psybrat
 #
 # Created:     21.12.2020
-# Copyright:   (c) g.ukryukov 2020
-# Licence:     <your licence>
-#-------------------------------------------------------------------------------
+#--------------------------------------------
 
 
-class FinnedRadiator():
+class FinnedRadiator:
     """
     Ребристый радиатор.
     param:
@@ -48,7 +46,6 @@ class FinnedRadiator():
         self.base_thick = base_thick
         self.fin_thick = fin_thick
         self.step = step
-
 
     def __repr__(self):
         res = \
@@ -92,9 +89,8 @@ class FinnedRadiator():
         fr
         Площадь поверхности всех рёбер. [м^2]
         """
-        res = (self.edge_number() - 1)  * (self.length * self.fin_height * 2)
+        res = (self.edge_number() - 1) * (self.length * self.fin_height * 2)
         return res
-
 
     def fins_surface_with_element(self, fr1):
         """
@@ -110,7 +106,6 @@ class FinnedRadiator():
         else:
             return 0
 
-
     def full_surface(self):
         """
         f0
@@ -121,7 +116,6 @@ class FinnedRadiator():
             2 * self.edge_number() * self.fin_height * self.fin_thick
         return res
 
-
     def equal_diameter(self):
         """
         Возвращает эквивалентный диаметр для течения среды в каналах рёбер
@@ -131,12 +125,12 @@ class FinnedRadiator():
         dell = self.half_step()
         h1 = self.fin_height
 
-        area = 2 * dell * h # площадь канала между рёбрами
-        perimeter = 2 * (h1 + 2 * dell) # периметр канала между рёбрами
+        area = 2 * dell * h1  # площадь канала между рёбрами
+        perimeter = 2 * (h1 + 2 * dell)  # периметр канала между рёбрами
         return 4 * area / perimeter
 
 
-def fin_radiator_generator(k=1, length=0.01, max_width=0.5, step = 0.01):
+def fin_radiator_generator(k=1, length=0.01, max_width=0.5, step=0.01):
     """
     param:
         k : integer
@@ -173,7 +167,7 @@ def fin_radiator_generator(k=1, length=0.01, max_width=0.5, step = 0.01):
 
     custom_radiator = [[length, i*step] for i in range(1, int(max_width/step))]
 
-    radiators = {1:one_side_standart_radiator, 2:two_side_standart_radiator, 0:custom_radiator}
+    radiators = {1: one_side_standart_radiator, 2: two_side_standart_radiator, 0: custom_radiator}
     return radiators[k]
 
 

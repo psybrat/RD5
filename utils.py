@@ -1,13 +1,11 @@
 # -*- coding: utf-8 -*-
 #-------------------------------------------------------------------------------
-# Name:        модуль1
+# Name:        utils
 # Purpose:
 #
-# Author:      g.ukryukov
+# Author:      psybrat
 #
 # Created:     14.12.2020
-# Copyright:   (c) g.ukryukov 2020
-# Licence:     <your licence>
 #-------------------------------------------------------------------------------
 
 import csv
