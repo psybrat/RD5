@@ -29,7 +29,7 @@ class FinnedRadiator():
             Шаг рёбер [м]
 
 
-    >>> rad = FinnedRadiator(30E-3, 35E-3, 10E-3)
+    >>> rad = FinnedRadiator(length=35E-3, width=30E-3, fin_height=0.01, step=0.01, base_thick=0.004, fin_thick=0.001)
     >>> rad.edge_number()
     3.0
     >>> round(rad.flat_surface(), 7)
@@ -38,7 +38,8 @@ class FinnedRadiator():
     0.0045
     >>> round(rad.fins_surface(), 7)
     0.0014
-
+    >>> round(rad.equal_diameter(), 7)
+    0.0094737
     """
     def __init__(self, length, width, fin_height, step=10E-3, base_thick=4E-3, fin_thick=1E-3):
         self.length = length
@@ -121,11 +122,22 @@ class FinnedRadiator():
         return res
 
 
+    def equal_diameter(self):
+        """
+        Возвращает эквивалентный диаметр для течения среды в каналах рёбер
+        dell - половина расстояния между рёбрами, h1 - высота ребра
+        На выходе Real
+        """
+        area = 2 * self.half_step() * self.fin_height # площадь канала между рёбрами
+        perimeter = 2 * (self.fin_height + 2 * self.half_step()) # периметр канала между рёбрами
+        return 4 * area / perimeter
+
+
 def fin_radiator_generator(k=1, length=0.01, max_width=0.5, step = 0.01):
     """
     param:
         k : integer
-            Количество оребрённых сторон у радиатора. 1-Односторонний ГОСТ радиатор,
+            Количество оребрённых сторон у радиатора. 1-Односторонний ОСТ радиатор,
             2 - двусторонний ГОСТ радиатор, 0 - односторонний кастомный радиатор
             с фиксированной длиной ребра
         length : float
@@ -134,17 +146,17 @@ def fin_radiator_generator(k=1, length=0.01, max_width=0.5, step = 0.01):
             Максимально допустимая ширина кастомного радиатора
         step : float
             Шаг увеличения ширины (шаг ребра, чтоб увеличивать ширину на одно ребро)
-
     Возвращает список параметров радиатора (длину и ширину) с шагом ширины step в формате [[l1, b1], [l1, b2],...]
 
-    >>> a = radiator_generator()
+    >>> a = fin_radiator_generator()
     >>> print(a)
     [[0.036, 0.032], [0.036, 0.072], [0.05, 0.032], [0.05, 0.052], [0.05, 0.092], [0.08, 0.032], [0.08, 0.072], [0.08, 0.122], [0.1, 0.052], [0.1, 0.092], [0.1, 0.152], [0.125, 0.072], [0.125, 0.122], [0.125, 0.152]]
-    >>> print(radiator_generator(2))
+    >>> print(fin_radiator_generator(2))
     [[0.05, 0.052], [0.05, 0.092], [0.08, 0.072], [0.08, 0.122], [0.1, 0.052], [0.1, 0.092], [0.1, 0.152], [0.125, 0.072], [0.125, 0.122], [0.125, 0.152]]
-    >>> print(radiator_generator(0, 0.01, 0.14))
+    >>> print(fin_radiator_generator(0, 0.01, 0.14))
     [[0.01, 0.01], [0.01, 0.02], [0.01, 0.03], [0.01, 0.04], [0.01, 0.05], [0.01, 0.06], [0.01, 0.07], [0.01, 0.08], [0.01, 0.09], [0.01, 0.1], [0.01, 0.11], [0.01, 0.12], [0.01, 0.13]]
     """
+
     L1 = [3.6E-2, 3.6E-2, 5E-2, 5E-2, 5E-2, 8E-2, 8E-2, 8E-2, 1E-1, 1E-1,  1E-1,
             1.25E-1, 1.25E-1, 1.25E-1]
     B1 = [3.2E-2, 7.2E-2, 3.2E-2, 5.2E-2, 9.2E-2, 3.2E-2, 7.2E-2, 1.22E-1,
@@ -162,9 +174,6 @@ def fin_radiator_generator(k=1, length=0.01, max_width=0.5, step = 0.01):
     return radiators[k]
 
 
-
-def main():
-    pass
-
 if __name__ == '__main__':
-    main()
+    import doctest
+    doctest.testmod()

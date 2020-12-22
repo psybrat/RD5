@@ -60,8 +60,38 @@ def csv_parser(csv_path):
                 res['conditions'] = line_clear(line)
             if line[0].isdigit() and int(line[0]) > 0:
                 res['elements'].append(line_clear(line))
-##    print(res)
     return(res)
+
+
+def get_real(message, name="real",default=None):
+    """
+    param:
+        message: string
+            Выводимое пользователю сообщение
+        name: string
+            Сервисное имя, я не помню, зачем
+        default: float
+            Число по умолчанию, в случае пустого ответа пользователя
+
+    Запрашивает сообщением message у пользователя число и возвращает его в типе float
+    """
+    class RangeError(Exception): pass
+    message += ": " if default is None else " [{0}]: ".format(default)
+    while True:
+        try:
+            line = input(message)
+            if not line and default is not None:
+                return default
+            i = float(line)
+            if i >= 0:
+                return i
+            else:
+                raise RangeError("{0} may not be 0".format(name))
+            return i
+        except RangeError as err:
+            print("ERROR", err)
+        except ValueError as err:
+            print("ERROR {0} must be an real".format(name))
 
 
 if __name__ == '__main__':

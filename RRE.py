@@ -48,46 +48,34 @@ def f1xy(L, B, n, alff, dks):
     return f1x*f1y
 
 
-def get_real(message, name="real",default=None):
-    """
-    Запрашивает у пользователя ввод параметра i, оповещая сообщением message
-    Использует по умолчанию значение default. Возвращает Real.
-    """
-    class RangeError(Exception): pass
-    message += ": " if default is None else " [{0}]: ".format(default)
-    while True:
-        try:
-            line = input(message)
-            if not line and default is not None:
-                return default
-            i = float(line)
-            if i >= 0:
-                return i
-            else:
-                raise RangeError("{0} may not be 0".format(name))
-            return i
-        except RangeError as err:
-            print("ERROR", err)
-        except ValueError as err:
-            print("ERROR {0} must be an real".format(name))
-
-
 def number_Gr(t, dt_max, l):
     """
-    Число Грасгоффа. Температура среды t °C, максимально допустимая
-    разница температур (среда-элемент) dt_max, определяющий размер l
+    param:
+        t: float
+            Температура среды [*C]
+        dt_max: float
+            Максимально допустимая разница температур среда-элемент [*C]
+        l: float
+            Определяющий размер [м]
 
+    Возвращает число Грасгоффа
     """
     # Дописать расчёт числа 303959E5
     gr = 303959E5 * dt_max * l ** 3/(273 + t)
     return gr
 
 
-def number_Nu_plane(t_air, dt_max, l):
+def nusselt_free_plane(t_air, dt_max, l):
     """
-    Число Нуссельта для плоской вертикальной стенки, l - высота стенки
-    dt_max - максимально допустимая разница температур (среда-элемент),
-    t_air - температура среды
+    param:
+        t_air: float
+            Температура среды [*C]
+        dt_max: float
+            Максимально допустимая разница температур среда-элемент [*C]
+        l: float
+            Высота стенки (определяющий размер) [м]
+
+    Возвращает число Нуссельта для свободной конвекции на плоской вертикальной стенке
     """
     # a = Gr*Pr, Pr = 0.7
     a = 0.7 * number_Gr(t_air, dt_max, l)
@@ -99,13 +87,13 @@ def number_Nu_plane(t_air, dt_max, l):
     return nu
 
 
-def nusselt_fins(t_air, dt_max, dell, l):
+def nusselt_free_fins(t_air, dt_max, dell, l):
     """
     param:
         t_air : float
             Температура окружающей среды
         dt_max : float
-            Максимальная разница температур
+            Максимальная разница температур [*C]
 
     Число Нуссельта для межрёберного пространства. tb - температура воздуха,
     dt_max - максимально допустимая разница температур (среда-элемент),
@@ -121,8 +109,15 @@ def nusselt_fins(t_air, dt_max, dell, l):
 
 def number_Alfa(nu, l, t = 50):
     """
-    nu - число Нуссельта, l - определяющий размер
-    Коэффициент теплоотдачи для воздуха. Теплопроводность взята при Т=50
+    param:
+        nu: float
+            Число Нуссельта
+        l: float
+            Определяющий размер [м]
+        t: float
+            Температура потока [*C]
+
+    Возвращает коэффициент теплоотдачи для воздуха [Вт/м^2*К]. Теплопроводность взята при Т=50
     """
     # Дописать расчёт теплопроводности воздуха
     alfa = 0.0283 * nu/l
@@ -131,12 +126,18 @@ def number_Alfa(nu, l, t = 50):
 
 def number_Alfa_radiation(t_air, dt_max, dell, h1):
     """
-    Коэффициент лучистой теплоотдачи.
-    tb - температура среды,
-    dt_max (dtr) максимально допустимая разница температур (среда-элемент)
-    dell - половина расстояния между рёбер
-    h1 - высота ребра
-    На выходе: alfl - с плоской стороны, alflr - с ребристой
+    param:
+        tb: float
+            Температура среды [*C]
+        dt_max: float
+            Максимально допустимая разница температур среда-элемент [*C]
+        dell: float
+            Половина расстояния между рёбер [м]
+        h1: float
+            Высота рёбер [м]
+
+    Возвращает коэффициент теплоотдачи лучистый для плоской alfl
+    и оребрённой alflr стороны [Вт/м^2*К]
     """
     # Температура поверхности радиатора
     tr = t_air + dt_max
@@ -198,8 +199,8 @@ def cooling_power(radiator, tb, dtr, n, fr1, k, dks):
     fp = radiator.flat_surface()
 
 
-    nu_edge = nusselt_fins(tb,dtr, dell, l)
-    nu_plane = number_Nu_plane(tb, dtr, l)
+    nu_edge = nusselt_free_fins(tb,dtr, dell, l)
+    nu_plane = nusselt_free_plane(tb, dtr, l)
 
     pr = alpha2power(number_Alfa(nu_edge, dell), fr, dtr)    # Мощность, отводимая боковй поверхностью рёбер
     p0 = alpha2power(number_Alfa(nu_plane, l), f0, dtr)     # Мощность, отводимая остальной поверхностью

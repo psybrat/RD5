@@ -1,5 +1,6 @@
+# -*- coding: utf-8 -*-
 #-------------------------------------------------------------------------------
-# Name:        модуль1
+# Name:        elements
 # Purpose:
 #
 # Author:      g.ukryukov
@@ -12,7 +13,7 @@
 
 class ElectronicElement():
     """
-    Электрический элемент.
+    Электрический элемент
     param:
         power : float
             Тепловая мощность элемента [Вт]
@@ -21,7 +22,7 @@ class ElectronicElement():
         contact_space : float
             Площадь поверхности контакта с радиатором охлаждения [м^2]
         temp_resist : float
-            Контактное тепловое сопротивление Элемент-Радиатор (Обычно это КПТ-8) [м^2*К/Вт]
+            Контактное тепловое сопротивление элемент-радиатор (обычно это КПТ-8) [м^2*К/Вт]
         viborka : int
             Признак выборки под элемент (1..6)
 
@@ -67,22 +68,31 @@ class ElectronicElement():
         return self.max_t - air_temp - self.power * self.temp_resist / self.contact_space
 
 
-    def fr1_exclude_surface(self, fin_height):
+    def fr1_exclude_surface(self, fin_height, step=0.01):
         """
         param:
             fin_height : float
                 Высота ребра используемого радиатора [м]
+            step: float
+                Шаг рёбер (0.01 для естественной конвекции; 0.005 для принудительной)
 
-        Возвращает площадь боковой поверхности рёбер радиатора, изымаемая при установке
-        элемента на ребристую сторону радиатора. Рассчитывается исходя из
+        Возвращает площадь боковой поверхности рёбер радиатора, изымаемую при установке
+        элемента на оребрённую сторону радиатора. Рассчитывается исходя из
         признака выборки по РД5.8794-88 (или ОСТ) [м^2]
         """
-        return 2 * self.SV[self.viborka] * fin_height
+        if step == 0.01:
+            SV = [0, 1E-2, 3E-2, 5E-2, 7.2E-2, 1.05E-1, 1.4E-1]
+        elif step == 0.005:
+            SV = [0, 0.02, 0.045, 0.08, 0.125, 0.180, 0.245]
+        else:
+            #TODO посчитать SV для других шагов ребра
+            SV = [0, 0.02, 0.045, 0.08, 0.125, 0.180, 0.245]
+        return 2 * SV[self.viborka] * fin_height
 
 
 class SetElectronicElements():
     """
-    Набор элементов на одном радиаторе.
+    Набор элементов на одном радиаторе
 
     params:
         elements : list of <ElectronicElement>
@@ -114,11 +124,11 @@ class SetElectronicElements():
 
     def add(self, element):
         """
-        Добавляет элемент <ElectronicElement> в набор элементов.
+        Добавляет элемент <ElectronicElement> в набор элементов
 
         params:
             element : <ElectronicElement>
-                Объект класса <ElectronicElement>
+                Экземпляр класса <ElectronicElement>
         """
         self.pull.append(element)
 
@@ -126,7 +136,7 @@ class SetElectronicElements():
     def dtr_permissible_overheating(self, air_temp):
         """
         Возвращает минимальное значение допустимого перегрева для набора элементов
-        на радиаторе.
+        на радиаторе
 
         params:
             air_temp : float
@@ -142,12 +152,12 @@ class SetElectronicElements():
         return sum([el.power for el in self.pull])
 
 
-    def fr1_full_exclude_surface(self, fin_height):
+    def fr1_full_exclude_surface(self, fin_height, step=0.01):
         """
         Возвращает суммарную площадь боковых поверхностей, изъятых при установке
-        элементов на ребристую сторону радиатора.
+        элементов на оребрённую сторону радиатора
         """
-        return sum([el.fr1_exclude_surface(fin_height) for el in self.pull])
+        return sum([el.fr1_exclude_surface(fin_height, step) for el in self.pull])
 
 
 def main():
