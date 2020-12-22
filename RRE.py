@@ -167,7 +167,7 @@ def alpha2power(alpha, surface, diff_t):
     return alpha*surface*diff_t
 
 
-def cooling_power(radiator, tb, dtr, n, fr1, k, dks):
+def cooling_power(radiator, tb, dtr, n, fr1, k, dks, s):
     """
     param:
         radiator : FinnedRadiator()
@@ -184,6 +184,8 @@ def cooling_power(radiator, tb, dtr, n, fr1, k, dks):
             Одно- или двусторонний радиатор
         dks : float
             Магическая переменная
+        s: float
+            Шаг рёбер
 
     Расчёт мощности [Вт] отводимой радиатором в данных условиях
     """
@@ -199,10 +201,10 @@ def cooling_power(radiator, tb, dtr, n, fr1, k, dks):
     fp = radiator.flat_surface()
 
 
-    nu_edge = nusselt_free_fins(tb,dtr, dell, l)
+    nu_fins = nusselt_free_fins(tb,dtr, dell, l)
     nu_plane = nusselt_free_plane(tb, dtr, l)
 
-    pr = alpha2power(number_Alfa(nu_edge, dell), fr, dtr)    # Мощность, отводимая боковй поверхностью рёбер
+    pr = alpha2power(number_Alfa(nu_fins, dell), fr, dtr)    # Мощность, отводимая боковй поверхностью рёбер
     p0 = alpha2power(number_Alfa(nu_plane, l), f0, dtr)     # Мощность, отводимая остальной поверхностью
 
 # ----- Начинается расчёт лучевого теплообмена --------------------
@@ -233,22 +235,23 @@ def cooling_power(radiator, tb, dtr, n, fr1, k, dks):
 def main():
     gather_elements = SetElectronicElements()
 
-    filename = 'input_data.csv'
+    filename = 'input_data'
     data = utils.csv_parser(filename)
-    tb, h1, lm, bm, k, n = data['conditions']
+    tb, h1, lm, bm, k, s = data['conditions']
+
     for el in data['elements']:
         element = ElectronicElement(*el)
         gather_elements.add(element)
 
-
     s0 = 0.2e-3 #изначально бралась площадь контакта первого элемента (хз почему)
     dks = math.sqrt(s0/3.14)  #почему? Иди нахуй. вот почему.
 
-    fr1 = gather_elements.fr1_full_exclude_surface(h1)
+    fr1 = gather_elements.fr1_full_exclude_surface(h1, step=s)
     dtr = gather_elements.dtr_permissible_overheating(tb)
     p = gather_elements.full_power()
+    n = len(gather_elements)
 
-    conditions = {'tb': tb, 'dtr': dtr, 'n': n, 'fr1': fr1, 'k': k, 'dks': dks}
+    conditions = {'tb': tb, 'dtr': dtr, 'n':n, 'fr1': fr1, 'k': k, 'dks': dks, 's': s}
 
     for el in radiator_generator(k, length=lm, max_width=bm):
         l, b = el
@@ -258,8 +261,8 @@ def main():
         if pp >= p:
             print("Параметры радиатора: длина {0}, ширина {1}, выота ребра {2}, площадь {3}".format(l,b,h1, l*b))
             break
-        else:
-            continue
+
+    if pp < p:
         print('Невозможно подобрать радиатор в заданных геометрических рамках')
 
 

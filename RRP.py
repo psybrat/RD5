@@ -18,6 +18,7 @@ from elements import ElectronicElement, SetElectronicElements
 from radiators import fin_radiator_generator as radiator_generator
 from utils import get_real
 
+
 def reynolds(w, d):
     """
     param:
@@ -42,21 +43,20 @@ def nusselt_force_fins(re, q):
     Возвращает число Нуссельта для принудительной конвекции в межрёберном канале
     """
 
-    def nki(a, n):
+    def nki(t):
         """
+        param:
+            t: float
+                Температура [*C]
+
         Пока без понятия, что это за функция.
         Какой-то поправочный коэффициент.
         """
         T = [1, 2, 5, 10, 15, 20, 30, 40, 50]
         B3 = [1.9, 1.7, 1.44, 1.28, 1.18, 1.13, 1.05, 1.02, 1]
-        n1 = n - 1
-        for i in range(n1):
-            if(a >= T[i])and(a <= T[i+1]):
-                b = B3[i] - (B3[i] - B3[i+1])*(a-T[i])/(T[i+1] - T[i])
-            else:
-                b = 1
-        return b
-
+        for i in range(len(T)):
+            if(t >= T[i])and(t <= T[i+1]):
+                return B3[i] - (B3[i] - B3[i+1]) * (t - T[i]) / (T[i+1] - T[i])
 
     if re <= 2200:
         a = 0.7*re/q
@@ -67,7 +67,7 @@ def nusselt_force_fins(re, q):
         else:
             nu = 2.32*a**0.33
     else:
-        fl = nki(q, 9)    # ????
+        fl = nki(q)    # ????
         if (q <= 50):
             nu = fl*0.0216*re**0.8
         else:
@@ -170,26 +170,23 @@ def cooling_power(radiator, tb, dtr, n, fr1, k, dks, w, p):
     q = l/dk                    # Отношение длины канала к калибру
 
     wr = w * s / (s - br)           # ???
-    dtb = (0.9E-3 * pr)/(w * (2 * dell * h1))    # ????
-    dtoop = dtr
-    rer = reynolds(wr, dk)
-# ----------- Хитрый Нуссельт ---------------------
-    nur = nusselt_force_fins(rer, q)
-# ------------ Посчитан хитрый Нуссельт ------------
 
+    dtoop = dtr
+
+    rer = reynolds(wr, dk)
+    nur = nusselt_force_fins(rer, q)
+
+    dtb = (0.9E-3 * pr)/(w * (2 * dell * h1))    # ????
     dtrr = pr / (number_Alfa(nur, dk) * fr)         #  перегрев при текущей альфа и площади  (может внезапно стать бесконечностью)
     mh1 = 0.15 * math.sqrt(number_Alfa(nur, dk) / br) * h1     # очень похоже на коэффициент эффективности, но не понятно, откуда 0.15
     z = math.tanh(mh1)/mh1              # ----//-----
     dtr = dtrr/z + dtb/2                #???? О_о
 
     re = reynolds(w, l)
-# ----- Хитрый нуссельт для плоской поверхности? -----
     nu_plane = nusselt_force_plane(re)
-# ----------------------------------------------------
     p0 = alpha2power(number_Alfa(nu_plane, l), f0, dtr)
 
     alfl, alflr = number_Alfa_radiation(tb, dtr, dell, h1) # Излучение
-
     plr = alpha2power(alflr, fr, dtr)   # Альфа с поправкой для рёбер
     pl0 = alpha2power(alfl, f0, dtr)    # Плоская часть с боков. Альфа как для плоской
 
@@ -205,7 +202,7 @@ def cooling_power(radiator, tb, dtr, n, fr1, k, dks, w, p):
     alff = (p1 + p2)/(fp*dtr)           # Суммарная альфа
 
     bet = fp/(4*n*dks**2) * f1xy(l, b, n, alff, dks)      # Какой-то коэффициент растекания
-    pp = fp * alff * dtoop/bet
+    pp = alpha2power(alff, fp, dtoop) / bet
     print("PP : {0}; alff : {1}, w : {2}, wr : {3}".format(pp, alff, w, wr))
     return pp
 
@@ -218,8 +215,8 @@ def main():
 
     filename = 'test_RRP_input_data.csv'
     data = utils.csv_parser(filename)
-    tb, h1, lm, bm, k, n = data['conditions']
-    s = 0.005
+    tb, h1, lm, bm, k, s = data['conditions']
+
     for el in data['elements']:
         element = ElectronicElement(*el)
         gather_elements.add(element)
@@ -229,22 +226,21 @@ def main():
 
     fr1 = gather_elements.fr1_full_exclude_surface(h1, step=s)
     dtr = gather_elements.dtr_permissible_overheating(tb)
-
     p = gather_elements.full_power()
+    n = len(gather_elements)
 
     conditions = {'tb': tb, 'dtr': dtr, 'n': n, 'fr1': fr1, 'k': k, 'dks': dks, 'w': w, 'p': p}
 
     for el in radiator_generator(k, length=lm, max_width=bm):
         l, b = el
-
-        radiator = FinnedRadiator(l, b, h1, step=0.005)
-
+        radiator = FinnedRadiator(l, b, h1, step=s)
         pp = cooling_power(radiator, **conditions)
+
         if pp >= p:
             print("Параметры радиатора: длина {0}, ширина {1}, выота ребра {2}, площадь {3}".format(l,b,h1, l*b))
             break
-        else:
-            continue
+
+    if pp < p:
         print('Невозможно подобрать радиатор в заданных геометрических рамках')
 
 

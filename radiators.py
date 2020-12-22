@@ -128,8 +128,11 @@ class FinnedRadiator():
         dell - половина расстояния между рёбрами, h1 - высота ребра
         На выходе Real
         """
-        area = 2 * self.half_step() * self.fin_height # площадь канала между рёбрами
-        perimeter = 2 * (self.fin_height + 2 * self.half_step()) # периметр канала между рёбрами
+        dell = self.half_step()
+        h1 = self.fin_height
+
+        area = 2 * dell * h # площадь канала между рёбрами
+        perimeter = 2 * (h1 + 2 * dell) # периметр канала между рёбрами
         return 4 * area / perimeter
 
 

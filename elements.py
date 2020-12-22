@@ -122,6 +122,10 @@ class SetElectronicElements():
                                                             [el.power for el in self.pull])
 
 
+    def __len__(self):
+        return len(self.pull)
+
+
     def add(self, element):
         """
         Добавляет элемент <ElectronicElement> в набор элементов
@@ -154,14 +158,17 @@ class SetElectronicElements():
 
     def fr1_full_exclude_surface(self, fin_height, step=0.01):
         """
+        param:
+            fin_height: float
+                Высота рёбер
+            step: float
+                Шаг рёбер
+
         Возвращает суммарную площадь боковых поверхностей, изъятых при установке
         элементов на оребрённую сторону радиатора
         """
         return sum([el.fr1_exclude_surface(fin_height, step) for el in self.pull])
 
 
-def main():
-    pass
-
 if __name__ == '__main__':
-    main()
+    pass

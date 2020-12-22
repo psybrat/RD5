@@ -60,7 +60,7 @@ def csv_parser(csv_path):
                 res['conditions'] = line_clear(line)
             if line[0].isdigit() and int(line[0]) > 0:
                 res['elements'].append(line_clear(line))
-    return(res)
+    return res
 
 
 def get_real(message, name="real",default=None):
@@ -95,6 +95,6 @@ def get_real(message, name="real",default=None):
 
 
 if __name__ == '__main__':
-    csv_parser('input_data.csv')
+    csv_parser('input_data')
     import doctest
     doctest.testmod()
